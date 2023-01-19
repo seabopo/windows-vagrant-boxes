@@ -1,0 +1,46 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+show_gui     = true
+
+vm_workgroup     = 'home'
+vm_domain        = 'home.local'
+vm_memsize       = "4096"
+vm_cpus          = "1"
+vm_cores_per_cpu = "2"
+
+Vagrant.configure("2") do |config|
+
+# Common Scripts for all VMs
+
+  config.vm.boot_timeout = 600
+
+  config.vm.synced_folder "../../scripts",    "/scripts"
+  config.vm.synced_folder "../../localfiles", "/localfiles"
+
+  config.vm.provision "shell", privileged: "true",
+    path: "../../scripts/configure-startup-shutdown.bat"
+
+  config.vm.provision "shell", privileged: "true",
+    path: "../../scripts/install-edge.bat"
+
+# Individual VM Config
+
+  (1..4).each do |i|
+    config.vm.define "server#{i}" do |this|
+      this.vm.box = "ws2019"
+      this.vm.hostname = "server#{rand(1000..9999)}"
+      this.vm.provider "vmware_desktop" do |node|
+        node.gui = show_gui
+        node.vmx["memsize"]  = vm_memsize
+        node.vmx["numvcpus"] = vm_cpus
+        node.vmx["cpuid.coresPerSocket"] = vm_cores_per_cpu
+        node.vmx['displayname'] = "vBot#{i}"
+        node.vmx["ethernet0.pcislotnumber"] = "33"
+        node.vmx["ethernet0.connectiontype"] = "nat"
+        node.vmx["ethernet0.virtualDev"] = "vmxnet3"
+      end
+    end
+  end
+
+end

@@ -1,0 +1,4 @@
+environments/*/.vagrant/*
+localfiles/*
+environments/vBot/*
+environments/script-testing/*
