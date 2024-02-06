@@ -1,48 +1,68 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-show_gui     = true
+# https://developer.hashicorp.com/vagrant/docs/boxes/base#windows-boxes
+
+show_gui         = true
 
 vm_workgroup     = 'home'
 vm_domain        = 'home.local'
-vm_memsize       = "4096"
-vm_cpus          = "1"
+vm_memsize       = "8192"
+vm_cpus          = "4"
 vm_cores_per_cpu = "4"
 
 Vagrant.configure("2") do |config|
 
 # Common Scripts for all VMs
 
-  config.vm.synced_folder "../scripts",    "/scripts"
-  config.vm.synced_folder "../localfiles", "/localfiles"
+  config.winrm.max_tries = 300 # default is 20
+  config.winrm.retry_delay = 2 # seconds.
+
+  config.vm.boot_timeout = 1800
+  config.vm.synced_folder "../../scripts",    "/scripts"
+  config.vm.synced_folder "../../localfiles", "/localfiles"
 
   config.vm.provision "shell", privileged: "true",
-    path: "../scripts/install-edge.bat"
+    path: "../../scripts/configure-startup.bat"
 
   config.vm.provision "shell", privileged: "true",
-    path: "../scripts/configure-startup.bat"
+    path: "../../scripts/configure-network.ps1",
+    args: "-WorkGroupName '#{vm_workgroup}' -DNSDomain '#{vm_domain}' -SetInterfaceToPrivate",
+    reboot: "true"
 
-  #config.vm.provision "shell", privileged: "true",
-  #  path: "../scripts/configure-network.ps1",
-  #  args: "-WorkGroupName '#{vm_workgroup}' -DNSDomain '#{vm_domain}' -SetInterfaceToPrivate",
-  #  reboot: "true"
+  ["vmware_fusion", "vmware_workstation"].each do |provider|
+    config.vm.provider provider do |v, override|
+      v.gui = show_gui
+      v.enable_vmrun_ip_lookup = false
+    end
+  end
 
 # Individual VM Config
-
   config.vm.define "scripting" do |this|
-    this.vm.box = "w10e"
+    this.vm.box = "w10"
     this.vm.hostname = "Win10"
     this.vm.provider "vmware_desktop" do |node|
       node.gui = show_gui
+     #node.enable_vmrun_ip_lookup = false
+     #node.vmx["vhv.enable"] = "TRUE"
+     #node.vmx["hypervisor.cpuid.v0"] = "FALSE"
       node.vmx["memsize"]  = vm_memsize
       node.vmx["numvcpus"] = vm_cpus
       node.vmx["cpuid.coresPerSocket"] = vm_cores_per_cpu
       node.vmx['displayname'] = "Win10"
-      node.vmx["ethernet0.pcislotnumber"] = "33"
+     #node.vmx["ethernet0.pcislotnumber"] = "33"
       node.vmx["ethernet0.connectiontype"] = "nat"
       node.vmx["ethernet0.virtualDev"] = "vmxnet3"
+      node.vmx["gui.fitguestusingnativedisplayresolution"] = "TRUE"
+      node.vmx["mks.enable3d"] = "TRUE"
+      node.vmx["mks.forceDiscreteGPU"] = "TRUE"
+      node.vmx["sound.startconnected"] = "TRUE"
+      node.vmx["sound.present"] = "TRUE"
+      node.vmx["sound.autodetect"] = "TRUE"
+     #node.vmx["gui.fullscreenatpoweron"] = "TRUE"
+     #node.vmx["gui.viewmodeatpoweron"] = "fullscreen"
+     #node.vmx["gui.lastPoweredViewMode"] = "fullscreen"
     end
-
   end
 
 end
